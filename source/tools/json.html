@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<head>
+
+</head>
+
+<style type="text/css">
+    .container {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+    }
+
+    .container-left,
+    .container-right {
+        width: 48%;
+        height: 100vh;
+        border: 1px solid black;
+        overflow-y: scroll;
+    }
+
+    .brace {
+        /* 大括号 */
+    }
+
+    .object,
+    .array {
+        /* 对象 & 数组 */
+        /* 竖线：目前还有问题，位置不对 */
+        /* padding-left: 20px;
+        border-left: 1px solid #d0d7de; */
+    }
+
+
+    .row {
+        /* 行 */
+    }
+
+    .key {
+        /* 键 */
+        color: #92278f;
+        font-weight: bold;
+    }
+
+    .colon {
+        /* 冒号 */
+    }
+
+    .comma {
+        /* 逗号 */
+
+    }
+
+    .string-text,
+    .default-text {
+        /* 字符串类型 */
+        color: #3ab54a;
+        font-weight: bold;
+    }
+
+    .null-text {
+        /* 空值类型 */
+        color: #f1592a;
+        font-weight: bold;
+    }
+
+    .number-text {
+        /* 数字类型 */
+        color: #25aae2;
+        font-weight: bold;
+    }
+
+    .boolean-text {
+        /* bool 类型 */
+        color: #f98280;
+        font-weight: bold;
+    }
+
+    .expand::after,
+    .unExpand::after {
+        cursor: pointer;
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        line-height: 12px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 5px;
+        /* 目前还有点问题 */
+        /* position: absolute;  
+        left: 0; */
+    }
+
+    .expand::after {
+        content: "-";
+        color: #ea5455;
+        border: 2px solid #ea5455;
+    }
+
+    .unExpand::after {
+        content: "+";
+        color: #00cfe8;
+        border: 2px solid #00cfe8;
+    }
+</style>
+
+<body>
+    <div class="operate-btns">
+        <button onclick="setDefaultJson()">默认json</button>
+    </div>
+    <div class="container">
+        <textarea id="container-origin" class="container-left" placeholder="please input json string..."></textarea>
+        <div id="container-transfer" class="container-right"></div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    const type = obj => {
+        return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
+    }
+
+    const defaultJsonStr = `{"string":"哈特小客栈","number":123,"boolean":true,"null":null,"empty":"","emptyArray":[],"emptyObject":{},"array":["哈特小客栈",123,true,null,"",[{"string":"哈特小客栈","number":123,"boolean":true,"null":null,"empty":"","emptyArray":[],"emptyObject":{}}],{"string":"哈特小客栈","number":123,"boolean":true,"null":null,"empty":"","emptyArray":[],"emptyObject":{}},[],{}],"object":{"string":"哈特小客栈","number":123,"boolean":true,"null":null,"empty":"","array":["哈特小客栈",123,true,null,"",[{"string":"哈特小客栈","number":123,"boolean":true,"null":null,"empty":"","emptyArray":[],"emptyObject":{}}],{"string":"哈特小客栈","number":123,"boolean":true,"null":null,"empty":"","emptyArray":[],"emptyObject":{}}]}}`;
+
+    class JsonTreeView {
+        constructor({ el }) {
+            this.el = type(el) === "string" ? document.querySelector(el) : el;
+        }
+
+        stringify(data) { }
+    }
+
+    const isNoEmptyData = data => {
+        const dataType = type(data);
+        switch (dataType) {
+            case 'object':
+                return Object.keys(data).length > 0
+            case 'array':
+                return data.length > 0;
+            default:
+                return false;
+        }
+    }
+
+    const setDefaultJson = () => {
+        document.getElementById('container-origin').value = defaultJsonStr;
+        const obj = JSON.parse(defaultJsonStr, null, 4);
+        const html = stringify2Html(obj);
+        document.getElementById('container-transfer').innerHTML = html;
+    }
+
+    const addIndentation = (n = 0) => {
+        let res = '';
+        for (let index = 0; index < n; index++) {
+            res += `&nbsp;&nbsp;&nbsp;&nbsp;`;
+        }
+        return res;
+    }
+
+    let uniqueId = 0;
+
+    const stringify2Html = (data, i = 1, isAsKeyValue = false, isLast = true) => {
+        let id = uniqueId++;
+        const dataType = type(data);
+        let str = '';
+        let isEmpty = false;
+        const expandBtnStr = `<span class="expandBtn expand" data-id=${id}></span>`
+        switch (dataType) {
+            case 'object': // 对象
+                const keys = Object.keys(data);
+                isEmpty = keys.length <= 0
+                // 开始的括号
+                str += isEmpty || isAsKeyValue ? `<span class="brace">${isEmpty ? '' : expandBtnStr}{</span>` : `<div class="brace">${expandBtnStr}{</div>`;
+                if (!isEmpty) {
+                    // 中间整体
+                    str += `<div class="object" data-fid="${id}" data-level="${i}">`;
+                    // 中间的每一行
+                    keys.forEach((key, index) => {
+                        str += '<div class="row">';
+                        str += addIndentation(i) + `<span class="key">"${key}"</span><span class="colon">:</span>&nbsp;`; // 属性名+冒号
+                        str += stringify2Html(data[key], i + 1, true, index >= keys.length - 1); // 递归 value
+                        if (index < keys.length - 1 && !isNoEmptyData(data[key])) {
+                            str += '<span class="comma">,</span>'; // 除最后一个外结束都有逗号
+                        }
+                        str += '</div>'
+                    })
+                    str += '</div>';
+                }
+
+                str += isEmpty ? '<span class="brace">}</span>' : `<div class="brace">${addIndentation(i - 1)}}${isLast ? '' : '<span class="comma">,</span>'}</div>`; // 结束的括号
+                break;
+            case 'array': // 数组
+                isEmpty = data.length <= 0;
+                str += isEmpty || isAsKeyValue ? `<span class="square-bracket">${isEmpty ? '' : expandBtnStr}[</span>` : `<div class="square-bracket">${expandBtnStr}[</div>`;
+                if (!isEmpty) {
+                    str += `<div class="array" data-fid="${id}" data-level="${i}">`;
+                    data.forEach((item, index) => {
+                        str += '<div>';
+                        str += addIndentation(i) + stringify2Html(item, i + 1, true, index >= data.length - 1);
+                        if (index < data.length - 1 && !isNoEmptyData(item)) {
+                            str += '<span class="comma">,<span>';
+                        }
+                        str += '</div>';
+                    })
+                    str += '</div>';
+                }
+                str += isEmpty ? '<span class="square-bracket">]</span>' : `<div class="square-bracket">${addIndentation(i - 1)}]${isLast ? '' : '<span class="comma">,</span>'}</div>`;
+                break;
+            default:
+                let className = "default-text";
+                if (dataType === 'string' || dataType === 'number' || dataType === 'boolean' || dataType === 'null') {
+                    className = dataType + "-text";
+                }
+                let isString = dataType === 'string';
+                str += `<span class="` + className + `">${isString ? '"' : ''}${data}${isString ? '"' : ''}</span>`;
+                break;
+        }
+        return str;
+    }
+
+    var jsonOriginTextarea = document.getElementById('container-origin');
+    var jsonTransferElement = document.getElementById('container-transfer');
+    jsonOriginTextarea.addEventListener('input', function (e) {
+        try {
+            if (e.target.value === undefined || e.target.value === '') {
+                document.getElementById('container-transfer').innerHTML = '';
+                return;
+            }
+            const obj = JSON.parse(e.target.value, null, 4);
+            const html = stringify2Html(obj);
+            document.getElementById('container-transfer').innerHTML = html;
+        } catch (error) {
+            console.log(error)
+            document.getElementById('container-transfer').innerHTML = error.message;
+        }
+    });
+
+    jsonTransferElement.addEventListener('click', function (e) {
+        let target = e.target;
+        if (target.classList.contains('expandBtn')) {
+            // 是否展开
+            let isExpand = target.classList.contains('expand');
+            // 获得 id
+            let id = target.getAttribute('data-id');
+            // 找到需要折叠或展开的元素
+            let el = document.querySelector(`div[data-fid="${id}"]`);
+            let level = el.getAttribute('data-level');
+            // 省略号元素
+            let ellipsisEl = document.querySelector(`div[data-eid="${id}"]`);
+            if (!ellipsisEl) { // 不存在，创建一个
+                ellipsisEl = document.createElement('div');
+                ellipsisEl.className = 'ellipsis';
+                ellipsisEl.innerHTML = addIndentation(level - 1) + '...';
+                ellipsisEl.setAttribute('data-eid', id);
+                ellipsisEl.style.display = 'none';
+                el.parentNode.insertBefore(ellipsisEl, el);
+            }
+            if (isExpand) {
+                target.classList.remove('expand');
+                target.classList.add('unExpand');
+                el.style.display = 'none';
+                ellipsisEl.style.display = 'block';
+            } else {
+                target.classList.remove('unExpand');
+                target.classList.add('expand');
+                ellipsisEl.style.display = 'none';
+                el.style.display = 'block';
+            }
+        }
+    });
+
+</script>
